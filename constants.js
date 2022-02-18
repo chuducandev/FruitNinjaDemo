@@ -110,3 +110,21 @@ export const Splashes = [{
 	height: 837,
 	scale: 1,
 }]
+
+export const Bomb = {
+	image: require("./assets/images/bomb/bomb.png"),
+	splashColor: "transparent",
+	width: 1000,
+	height: 1260,
+	scale: 1.2,
+};
+
+export const Star = {
+	image: require("./assets/images/star/star.png"),
+	splashColor: "#f3cc30",
+	width: 1000,
+	height: 953,
+	scale: 1.1,
+};
+
+export const starInterval = 10000;

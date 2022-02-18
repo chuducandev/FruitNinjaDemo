@@ -74,20 +74,20 @@ const ComboText = (props) => {
 				position: "absolute",
 				left: posX,
 				top: posY,
-				width: width / 3,
+				width: width,
 				alignItems: "center",
 				opacity: opacity,
 			}}
 		>
 			<Text
 				style={{
-					fontSize: 14 + numOfCombo * 2,
+					fontSize: numOfCombo == -1 ? 36 : 14 + numOfCombo * 2,
 					fontWeight: "bold",
 					color: color,
 					textAlign: "center",
 				}}
 			>
-				{numOfCombo == 1 ? "Nice" : numOfCombo == 2 ? "Double\nkill" : numOfCombo == 3 ? "Triple kill" : numOfCombo == 4 ? "Quadra kill" : numOfCombo == 5 ? "Penta kill" : numOfCombo == 6 ? "Ultra kill" : numOfCombo == 7 ? "Godlike" : numOfCombo == 8 ? "Rampage" : numOfCombo == 9 ? "Unstoppable" : numOfCombo == 10 ? "Wicked sick" : "Unbelievable"}
+				{numOfCombo == -1 ? "Star Time!" : numOfCombo == 1 ? "Nice" : numOfCombo == 2 ? "Double\nkill" : numOfCombo == 3 ? "Triple kill" : numOfCombo == 4 ? "Quadra kill" : numOfCombo == 5 ? "Penta kill" : numOfCombo == 6 ? "Ultra kill" : numOfCombo == 7 ? "Godlike" : numOfCombo == 8 ? "Rampage" : numOfCombo == 9 ? "Unstoppable" : numOfCombo == 10 ? "Wicked sick" : "Unbelievable"}
 			</Text>
 		</View>
 

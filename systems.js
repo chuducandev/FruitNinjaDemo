@@ -1,8 +1,11 @@
 import { Box, Splash } from "./renderers";
+import { starInterval } from "./constants";
 import Matter from "matter-js";
 import {
+	Bomb,
 	Fruits,
 	Splashes,
+	Star,
 } from "./constants";
 
 let boxIds = -1;
@@ -19,23 +22,42 @@ const Physics = (state, { touches, time }) => {
 	return state;
 };
 
+const difficulty = seconds => {
+	if (seconds < 5) return 0;
+	if (seconds < 15) return 0.1;
+	if (seconds < 30) return 0.2;
+	if (seconds < 60) return 0.3;
+	if (seconds < 120) return 0.4;
+	return 0.5;
+}
+
 const CreateBox = (state, { touches, screen, time }) => {
 	const world = state["physics"].world;
 	const constraints = state["physics"].constraints;
 	const startingTime = state["global"].startingTime;
 	const followingTime = state["global"].followingTime;
+	const endingTime = state["global"].endingTime;
+	const starTime = state["global"].starTime;
 	const currentTime = (new Date()).getTime();
-	const timeInterval = currentTime - startingTime < 5000
-		? Math.random() * 500 + 1000
-		: (Math.random() < 0.7 ? Math.random() * 400 + 100 : Math.random() * 500 + 1500);
+	const timeInterval = currentTime - starTime < starInterval
+		? Math.random() * 400 + 100
+		: (currentTime - startingTime < starInterval
+			? Math.random() * 500 + 1000
+			: (Math.random() < 0.7 ? Math.random() * 400 + 100 : Math.random() * 500 + 1500));
 
-	if (currentTime > followingTime && currentTime - startingTime <= 60000) {
+	if (currentTime > followingTime && currentTime <= endingTime) {
 		const numBoxes = 1// Math.random() < 0.7 ? 1 : Math.floor(Math.random() * 3) + 2;
 
 		for (let i = 0; i < numBoxes; i++) {
 			state["global"].followingTime += timeInterval;
 
-			const fruit = Fruits[Math.floor(Math.random() * Fruits.length)];
+			const p = Math.random();
+			const fruit = p < difficulty((currentTime - startingTime) / 1000) && currentTime > starTime + starInterval
+				? Bomb
+				: p > 0.9 && currentTime > starTime + starInterval && starTime < startingTime
+					? Star
+					: Fruits[Math.floor(Math.random() * Fruits.length)];
+
 			const width = fruit.width * fruit.scale * 0.07;
 			const height = fruit.height * fruit.scale * 0.07;
 
@@ -45,8 +67,8 @@ const CreateBox = (state, { touches, screen, time }) => {
 			const force = {
 				x: (x > screen.width / 2
 					? Math.floor(Math.random() * screen.height * 0.075) - screen.height * 0.075
-					: Math.floor(Math.random() * screen.height * 0.075)) / numBoxes,
-				y: (Math.floor(Math.random() * screen.height * 0.03) - screen.height * 2) / numBoxes,
+					: Math.floor(Math.random() * screen.height * 0.075)) / numBoxes * (fruit == Star ? 1.3 : 1),
+				y: (Math.floor(Math.random() * screen.height * 0.03) - screen.height * 2) / numBoxes * (fruit == Star ? 1.3 : 1),
 			}
 			const torque = Math.floor(Math.random() * 2) == 0
 				? Math.floor(Math.random() * 100) - 1000
@@ -58,7 +80,7 @@ const CreateBox = (state, { touches, screen, time }) => {
 				width,
 				height,
 				{
-					density: 1,
+					density: fruit != Bomb ? 1 : 0.6,
 					force,
 					torque,
 					collisionFilter: {
@@ -73,7 +95,7 @@ const CreateBox = (state, { touches, screen, time }) => {
 				width,
 				height,
 				{
-					density: 1,
+					density: fruit != Bomb ? 1 : 0.6,
 					torque,
 					collisionFilter: {
 						group: -1,
@@ -85,6 +107,8 @@ const CreateBox = (state, { touches, screen, time }) => {
 			const constraint = Matter.Constraint.create({
 				bodyA: body1,
 				bodyB: body2,
+				isBomb: fruit == Bomb,
+				isStar: fruit == Star,
 			});
 
 			Matter.World.add(world, [body1, body2]);
@@ -98,6 +122,8 @@ const CreateBox = (state, { touches, screen, time }) => {
 				color: fruit.splashColor,
 				image: fruit.image,
 				renderer: Box,
+				isBomb: fruit == Bomb,
+				isStar: fruit == Star,
 			};
 			state[++boxIds] = {
 				id: boxIds,
@@ -106,6 +132,8 @@ const CreateBox = (state, { touches, screen, time }) => {
 				color: fruit.splashColor,
 				image: fruit.image,
 				renderer: Box,
+				isBomb: fruit == Bomb,
+				isStar: fruit == Star,
 			};
 		}
 	}
@@ -142,7 +170,25 @@ const MoveBox = (state, { touches, screen }) => {
 			const previousSliceTime = state["global"].previousSliceTime;
 			state["global"].previousSliceTime = currentTime;
 
-			console.log(constraint.bodyA.velocity)
+			if (constraint.isBomb) {
+				state["global"].explode();
+				state["global"].endingTime = (new Date()).getTime();
+				return;
+			}
+
+			if (constraint.isStar) {
+				state["global"].starTime = (new Date()).getTime();
+				state["global"].endingTime = Math.max(state["global"].endingTime, (new Date()).getTime() + starInterval);
+				setComboTextParams({
+					numOfCombo: -1,
+					color: "#f3cc30",
+					x: 0,
+					y: screen.height / 2 - 18,
+					opacity: 1,
+					startingTime: currentTime,
+				});
+				return;
+			}
 
 			const splash = Splashes[Math.floor(Math.random() * Splashes.length)];
 			state["splash" + (++splashIds).toString()] = {
@@ -171,7 +217,7 @@ const MoveBox = (state, { touches, screen }) => {
 				setComboTextParams({
 					numOfCombo: currentCombo + 1,
 					color: constraint.bodyA.fruit.splashColor,
-					x: (constraint.bodyA.position.x + constraint.bodyB.position.x) / 2 - screen.width / 6,
+					x: (constraint.bodyA.position.x + constraint.bodyB.position.x) / 2 - screen.width / 2,
 					y: (constraint.bodyA.position.y + constraint.bodyB.position.y) / 2 - screen.height / 10,
 					opacity: 1,
 					startingTime: currentTime,
@@ -212,7 +258,12 @@ const CleanBoxes = (state, { touches, screen }) => {
 	let world = state["physics"].world;
 
 	Object.keys(state)
-		.filter(key => state[key].body && (state[key].body.position.y > screen.height * 1.5 || state[key].body.speed > 100))
+		.filter(key => {
+			if (state[key].isStar)
+				return state[key].body.position.y < -state[key].size[1];
+			else
+				return state[key].body && (state[key].body.position.y > screen.height * 1.5 || state[key].body.speed > 100)
+		})
 		.forEach(key => {
 			if (state[key].body.speed > 100) isRemoved = true;
 			Matter.Composite.remove(world, state[key].body);
@@ -259,9 +310,11 @@ const ControlSplashOpacity = (state, { touches, screen }) => {
 const RestartGame = (state, { touches, screen }) => {
 	const currentTime = (new Date()).getTime();
 
-	if (currentTime > state["global"].startingTime + 60000) {
+	if (currentTime > state["global"].endingTime + 5000) {
 		if (touches.find(x => x.type == "press")) {
 			state["global"].startingTime = currentTime;
+			state["global"].followingTime = currentTime;
+			state["global"].endingTime = currentTime + 180000;
 			state["global"].setScore(0);
 			state["global"].currentCombo = 1;
 			state["global"].previousSliceTime = currentTime;

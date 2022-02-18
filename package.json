@@ -10,6 +10,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "lottie-ios": "^3.2.3",
+    "lottie-react-native": "^5.0.1",
     "matter-js": "^0.18.0",
     "react": "17.0.2",
     "react-native": "0.67.2",
